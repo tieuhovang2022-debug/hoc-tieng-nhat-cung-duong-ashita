@@ -41,6 +41,62 @@
       $("fixed-back").classList.toggle("is-hidden", isHome);
       document.body.classList.toggle("has-fixed-back", !isHome);
       window.scrollTo(0, 0);
+      trackScreen(id);
+    }
+
+    /* ---------- Thống kê truy cập (GoatCounter) ---------- */
+    /* Bộ đếm nạp bất đồng bộ bằng thẻ script riêng (data-goatcounter-settings
+       no_onload=true) nên trang tự gọi count() cho từng màn hình bằng đường
+       dẫn ảo dễ đọc. Lỗi thống kê không bao giờ được ảnh hưởng việc học. */
+    var GC_PENDING = [];
+    function trackView(path, title){
+      try {
+        var item = { path: path, title: title || "" };
+        if (window.goatcounter && window.goatcounter.count){
+          window.goatcounter.count(item);
+        } else {
+          GC_PENDING.push(item);
+          if (GC_PENDING.length === 1){
+            var iv = setInterval(function(){
+              if (window.goatcounter && window.goatcounter.count){
+                clearInterval(iv);
+                while (GC_PENDING.length){
+                  try { window.goatcounter.count(GC_PENDING.shift()); } catch (e) {}
+                }
+              }
+            }, 300);
+            setTimeout(function(){ clearInterval(iv); }, 6000);
+          }
+        }
+      } catch (e) {}
+    }
+
+    var SKILL_SLUGS = { tuvung: "tu-vung", nguphap: "ngu-phap", dochieu: "doc-hieu", luyennoi: "luyen-noi" };
+    function trackScreen(id){
+      if (id === "screen-admin-login" || id === "screen-admin") return;
+      var lv = state.level, sk = state.skill, slug = sk ? SKILL_SLUGS[sk] : null;
+      var path = null, title = "";
+      if (id === "screen-home"){ path = "/jlpt/trang-chu"; title = "JLPT · Trang chủ"; }
+      else if (id === "screen-skills" && lv){ path = "/jlpt/" + lv; title = "JLPT · " + lv; }
+      else if (id === "screen-tests" && lv && slug){ path = "/jlpt/" + lv + "/" + slug; title = "JLPT · " + lv + " · " + skillLabel(sk); }
+      else if (id === "screen-parts" && lv){ path = "/jlpt/" + lv + "/tu-vung/bai-" + state.testNo; title = "JLPT · " + lv + " · Từ vựng · Bài " + state.testNo; }
+      else if (id === "screen-lecture" && lv){ path = "/jlpt/" + lv + "/ngu-phap/bai-" + state.testNo; title = "JLPT · " + lv + " · Ngữ Pháp · Bài " + state.testNo; }
+      else if (id === "screen-quiz" && lv && slug){
+        if (sk === "tuvung" && state.partNo){
+          path = "/jlpt/" + lv + "/tu-vung/bai-" + state.testNo + "/phan-" + state.partNo;
+          title = "JLPT · " + lv + " · Từ vựng · Bài " + state.testNo + " · Phần " + state.partNo;
+        } else {
+          path = "/jlpt/" + lv + "/" + slug + "/bai-" + state.testNo;
+          title = "JLPT · " + lv + " · " + skillLabel(sk) + " · Bài " + state.testNo;
+        }
+      }
+      else if (id === "screen-donate"){ path = "/jlpt/donate"; title = "JLPT · Donate cho tác giả"; }
+      else if (id === "screen-empty" && lv && slug){
+        if (sk === "tuvung"){ path = "/jlpt/" + lv + "/tu-vung/bai-" + state.testNo; title = "JLPT · " + lv + " · Từ vựng · Bài " + state.testNo; }
+        else if (sk === "nguphap"){ path = "/jlpt/" + lv + "/ngu-phap/bai-" + state.testNo; title = "JLPT · " + lv + " · Ngữ Pháp · Bài " + state.testNo; }
+        else { path = "/jlpt/" + lv + "/" + slug + "/bai-" + state.testNo; title = "JLPT · " + lv + " · " + skillLabel(sk) + " · Bài " + state.testNo; }
+      }
+      if (path) trackView(path, title);
     }
 
     function stopTimer(){
@@ -524,6 +580,90 @@
       }
     }
 
+    /* ---------- Quản trị (khu vực của tác giả) ---------- */
+    /* Cổng khoá nhẹ: chỉ lưu mã băm SHA-256 của mã khoá. Mã ban đầu là 123456;
+       mã mới đặt trong mục Quản trị được lưu ở localStorage (khoá quantri-hash-v1)
+       của chính trình duyệt này và được ưu tiên hơn mã ban đầu. */
+    var ADMIN_BUILTIN_HASH = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
+    function adminHash(text){
+      var enc = new TextEncoder().encode(text);
+      return crypto.subtle.digest("SHA-256", enc).then(function(buf){
+        return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0" + b.toString(16)).slice(-2); }).join("");
+      });
+    }
+    function adminExpectedHash(){
+      try { return localStorage.getItem("quantri-hash-v1") || ADMIN_BUILTIN_HASH; }
+      catch (e) { return ADMIN_BUILTIN_HASH; }
+    }
+    function adminUnlocked(){
+      try { return sessionStorage.getItem("quantri-ok") === "1"; } catch (e) { return false; }
+    }
+    function openAdmin(){
+      if (adminUnlocked()){ showAdminScreen(); }
+      else { showScreen("screen-admin-login"); }
+    }
+    function showAdminScreen(){
+      showScreen("screen-admin");
+      loadAdminTotal();
+    }
+    function loadAdminTotal(){
+      var el = $("admin-total");
+      var note = $("admin-total-note");
+      if (!el) return;
+      el.textContent = "…";
+      note.textContent = "Đang tải số liệu từ GoatCounter…";
+      fetch("https://duonggiangiao.goatcounter.com/counter/TOTAL.json")
+        .then(function(r){ if (!r.ok) throw new Error("http"); return r.json(); })
+        .then(function(d){
+          var n = d ? (d.total != null ? d.total : (d.count != null ? d.count : d.count_unique)) : null;
+          if (n == null) throw new Error("empty");
+          el.textContent = Number(n).toLocaleString("vi-VN");
+          note.textContent = "Tổng lượt xem trang ghi nhận từ khi gắn bộ đếm — bản web này và bản GitHub Pages dùng chung một bộ đếm GoatCounter.";
+        })
+        .catch(function(){
+          el.textContent = "—";
+          note.textContent = "Chưa đọc được số tổng từ GoatCounter. Số này sẽ hiện sau khi bạn bật công khai bộ đếm trong GoatCounter (xem hướng dẫn bên dưới).";
+        });
+    }
+    $("admin-open").addEventListener("click", function(ev){
+      ev.preventDefault();
+      stopTimer();
+      openAdmin();
+    });
+    $("admin-login-btn").addEventListener("click", function(){
+      var err = $("admin-login-err");
+      if (!(window.crypto && crypto.subtle && window.TextEncoder)){
+        err.textContent = "Trình duyệt này không hỗ trợ kiểm tra mã khoá — mời mở trang bằng https rồi thử lại.";
+        return;
+      }
+      adminHash($("admin-code").value || "").then(function(h){
+        if (h === adminExpectedHash()){
+          try { sessionStorage.setItem("quantri-ok", "1"); } catch (e) {}
+          err.textContent = "";
+          $("admin-code").value = "";
+          showAdminScreen();
+        } else {
+          err.textContent = "Mã khoá chưa đúng — mời bạn thử lại.";
+        }
+      });
+    });
+    $("admin-code").addEventListener("keydown", function(ev){
+      if (ev.key === "Enter"){ ev.preventDefault(); $("admin-login-btn").click(); }
+    });
+    $("admin-change-btn").addEventListener("click", function(){
+      var msg = $("admin-change-msg");
+      var n1 = $("admin-new-1").value || "", n2 = $("admin-new-2").value || "";
+      if (n1.length < 4){ msg.textContent = "Mã khoá mới cần ít nhất 4 ký tự."; return; }
+      if (n1 !== n2){ msg.textContent = "Hai ô mã khoá mới chưa khớp nhau."; return; }
+      adminHash(n1).then(function(h){
+        try { localStorage.setItem("quantri-hash-v1", h); } catch (e) {}
+        $("admin-new-1").value = ""; $("admin-new-2").value = "";
+        msg.textContent = "✓ Đã đổi mã khoá (mã mới chỉ lưu trên trình duyệt này).";
+      });
+    });
+    $("back-admin-login").addEventListener("click", function(){ showScreen("screen-home"); });
+    $("back-admin").addEventListener("click", function(){ showScreen("screen-home"); });
+
     /* ---------- Sự kiện nút ---------- */
     /* Nút quay lại cố định: bấm đúng nút "quay lại" của màn hình hiện tại,
        để hành vi (dừng đồng hồ, nạp lại danh sách…) giống hệt nút trong trang. */
@@ -536,7 +676,9 @@
         "screen-quiz": "back-tests",
         "screen-lecture": "back-lecture-tests",
         "screen-empty": "back-empty",
-        "screen-donate": "back-donate-home"
+        "screen-donate": "back-donate-home",
+        "screen-admin-login": "back-admin-login",
+        "screen-admin": "back-admin"
       };
       const target = active ? map[active.id] : null;
       if (target) $(target).click();
@@ -563,4 +705,7 @@
       $("confirm-modal").classList.remove("show");
       doSubmit();
     });
+
+    /* Đếm lượt mở trang chủ ngay khi tải trang */
+    trackScreen("screen-home");
     

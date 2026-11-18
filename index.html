@@ -473,6 +473,15 @@
       .screen{ display:none; }
       .screen.active{ display:block; }
       footer{ text-align:center; color:var(--ink-soft); font-size:13px; padding:0 14px 26px; }
+      .admin-entry{ text-align:center; margin:14px 0 2px; }
+      .admin-entry a{ color:var(--ink-soft); font-size:13px; text-decoration:underline; }
+      .admin-input{ width:100%; box-sizing:border-box; padding:13px 14px; font-size:16px; font-family:inherit; border:1.5px solid var(--line); border-radius:12px; background:var(--card); color:var(--ink); margin:0 0 10px; }
+      .admin-btn{ display:block; width:100%; box-sizing:border-box; text-align:center; text-decoration:none; margin:4px 0 10px; }
+      .admin-total{ font-size:40px; font-weight:800; text-align:center; margin:8px 0 2px; color:var(--ink); line-height:1.15; }
+      .admin-err{ color:var(--red); font-size:14px; min-height:18px; margin:2px 0 6px; }
+      .admin-note{ color:var(--ink-soft); font-size:13px; margin:8px 0 0; }
+      .admin-steps{ margin:6px 0 4px; padding-left:20px; font-size:15px; line-height:1.55; }
+      .admin-steps li{ margin-bottom:6px; }
     </style>
   </head>
   <body>
@@ -499,6 +508,7 @@
           <p>Phần Đọc Hiểu và Luyện Nói là bài trắc nghiệm có đồng hồ đếm ngược 45 phút như thi thật; riêng Từ Vựng làm theo từng phần con, mỗi phần tối đa 20 câu trong 15 phút — làm xong bấm <b>Nộp bài thi</b> để xem đáp án đúng – sai kèm giải thích chi tiết bằng tiếng Việt. Phần Ngữ Pháp là bài giảng để đọc và học, không tính giờ.</p>
           <p>Chúc các bạn học tốt và sớm chinh phục được kỳ thi JLPT! 一緒（いっしょ）に頑張（がんば）りましょう！</p>
         </div>
+        <p class="admin-entry"><a href="#" id="admin-open">Quản trị</a></p>
       </section>
 
       <!-- ============ CHỌN KỸ NĂNG ============ -->
@@ -587,6 +597,49 @@
         </div>
         <button class="back-btn" id="back-donate-home" type="button">← Về trang chủ</button>
       </section>
+
+      <!-- ============ QUẢN TRỊ: NHẬP MÃ KHOÁ ============ -->
+      <section id="screen-admin-login" class="screen">
+        <nav class="breadcrumb"><span>Trang chủ</span><span class="sep">›</span><b>Quản trị</b></nav>
+        <div class="card">
+          <h2 class="sec-title">🔐 Khu vực quản trị</h2>
+          <p class="sec-sub">Nhập mã khoá để xem thống kê truy cập của trang.</p>
+          <input class="admin-input" id="admin-code" type="password" autocomplete="off" placeholder="Mã khoá quản trị" />
+          <p class="admin-err" id="admin-login-err" aria-live="polite"></p>
+          <button class="submit-btn admin-btn" id="admin-login-btn" type="button">Mở phần quản trị</button>
+          <p class="admin-note">Mã khoá này chỉ để tránh học viên bấm nhầm — số liệu gốc nằm trong tài khoản GoatCounter của bạn.</p>
+        </div>
+        <button class="back-btn" id="back-admin-login" type="button">← Về trang chủ</button>
+      </section>
+
+      <!-- ============ QUẢN TRỊ: THỐNG KÊ TRUY CẬP ============ -->
+      <section id="screen-admin" class="screen">
+        <nav class="breadcrumb"><span>Trang chủ</span><span class="sep">›</span><b>Quản trị — Thống kê</b></nav>
+        <div class="card">
+          <h2 class="sec-title">📊 Tổng lượt truy cập</h2>
+          <p class="admin-total" id="admin-total">…</p>
+          <p class="sec-sub" id="admin-total-note">Đang tải số liệu…</p>
+          <a class="submit-btn admin-btn" href="https://duonggiangiao.goatcounter.com" target="_blank" rel="noopener">Mở bảng thống kê chi tiết (GoatCounter)</a>
+          <p class="sec-sub">Trong bảng GoatCounter bạn xem được lượt truy cập theo ngày / tuần và mục <b>Top bài học được mở nhiều nhất</b> — chính là danh sách các đường dẫn dạng /jlpt/... được mở nhiều nhất. Số liệu cập nhật trực tiếp.</p>
+        </div>
+        <div class="card">
+          <h2 class="sec-title">⚙️ Bật hiện số tổng ngay tại trang này</h2>
+          <ol class="admin-steps">
+            <li>Đăng nhập <b>duonggiangiao.goatcounter.com</b> bằng tài khoản GoatCounter của bạn.</li>
+            <li>Vào <b>Settings</b> → tìm mục <b>Public stats / Allow public counter</b> (thống kê công khai / cho phép bộ đếm công khai).</li>
+            <li>Bật tuỳ chọn đó, quay lại trang này và tải lại — tổng lượt truy cập sẽ hiện ở thẻ phía trên.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h2 class="sec-title">🔑 Đổi mã khoá</h2>
+          <p class="sec-sub">Mã khoá ban đầu là 123456. Đặt mã riêng của bạn tại đây (mã mới chỉ lưu trên trình duyệt này):</p>
+          <input class="admin-input" id="admin-new-1" type="password" autocomplete="off" placeholder="Mã khoá mới (ít nhất 4 ký tự)" />
+          <input class="admin-input" id="admin-new-2" type="password" autocomplete="off" placeholder="Nhập lại mã khoá mới" />
+          <button class="submit-btn admin-btn" id="admin-change-btn" type="button">Lưu mã khoá mới</button>
+          <p class="admin-err" id="admin-change-msg" aria-live="polite"></p>
+        </div>
+        <button class="back-btn" id="back-admin" type="button">← Về trang chủ</button>
+      </section>
     </main>
 
     <footer>© Dương Giàn Giáo — Học tiếng Nhật mỗi ngày, vững bước tới Nhật Bản.</footer>
@@ -628,6 +681,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 <script src="img-banner.js"></script>
 <script src="img-intro.js"></script>
 <script src="app.js"></script>
-
+    <script data-goatcounter="https://duonggiangiao.goatcounter.com/count" data-goatcounter-settings='{"no_onload": true}' async src="//gc.zgo.at/count.js"></script>
   </body>
 </html>
